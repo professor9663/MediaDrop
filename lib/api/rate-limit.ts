@@ -7,10 +7,9 @@ function configuredLimit(variable: string, fallback: number): number {
   return Number.isSafeInteger(value) && value > 0 ? Math.min(value, 1000) : fallback;
 }
 
-export function rateLimitResponse(request: Request, kind: "analyze" | "download"): NextResponse | null {
-  const fallback = kind === "analyze" ? 20 : 8;
-  const limit = configuredLimit(kind === "analyze" ? "RATE_LIMIT_ANALYZE_PER_MINUTE" : "RATE_LIMIT_DOWNLOAD_PER_MINUTE", fallback);
-  const result = checkRateLimit(`${kind}:${clientRateLimitKey(request)}`, limit);
+export function rateLimitResponse(request: Request): NextResponse | null {
+  const limit = configuredLimit("RATE_LIMIT_ANALYZE_PER_MINUTE", 20);
+  const result = checkRateLimit(`youtube-analyze:${clientRateLimitKey(request)}`, limit);
   if (result.allowed) return null;
   return apiError("rate_limited", "Too many requests. Wait a little before trying again.", 429, { "Retry-After": String(result.retryAfterSeconds) });
 }

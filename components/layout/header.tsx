@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
-import { ArrowDownToLine, Menu, Moon, Sun, X } from "lucide-react";
+import { Activity, Menu, Moon, Sun, X } from "lucide-react";
 
 type Theme = "light" | "dark";
 const THEME_EVENT = "mediadrop-theme-change";
@@ -40,11 +40,13 @@ export function Header({ appName }: { appName: string }) {
     <header className="site-header">
       <div className="header-inner page-shell">
         <Link href="/#home" className="brand" aria-label={`${appName} home`} onClick={closeMenu}>
-          <span className="brand-mark"><ArrowDownToLine size={18} strokeWidth={2.4} aria-hidden="true" /></span><span>{appName}</span>
+          <span className="brand-mark"><Activity size={18} strokeWidth={2.4} aria-hidden="true" /></span><span>{appName}</span>
         </Link>
         <nav className={`primary-nav ${menuOpen ? "nav-open" : ""}`} aria-label="Main navigation">
           <Link href="/#home" onClick={closeMenu}>Home</Link>
-          <Link href="/#platforms" onClick={closeMenu}>Supported Platforms</Link>
+          <Link href="/#analyze" onClick={closeMenu}>Analyze</Link>
+          <Link href="/#platforms" onClick={closeMenu}>Platforms</Link>
+          <Link href="/#features" onClick={closeMenu}>Features</Link>
           <Link href="/#how-it-works" onClick={closeMenu}>How It Works</Link>
           <Link href="/#faq" onClick={closeMenu}>FAQ</Link>
           <Link href="/privacy" onClick={closeMenu}>Privacy</Link>

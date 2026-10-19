@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { getProviderCapabilities } from "@/lib/providers/registry";
+import { getAnalyticsProviders } from "@/lib/youtube/providers";
 
 export const runtime = "nodejs";
 
 export function GET(): NextResponse {
-  return NextResponse.json({ providers: getProviderCapabilities() }, { headers: { "Cache-Control": "no-store" } });
+  return NextResponse.json({ providers: getAnalyticsProviders() }, { headers: { "Cache-Control": "no-store" } });
 }

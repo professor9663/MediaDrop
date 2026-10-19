@@ -5,8 +5,8 @@ import "./globals.css";
 export function generateMetadata(): Metadata {
   const { appName } = getPublicConfig();
   return {
-    title: `${appName} — Save supported media links`,
-    description: "Check supported media links and download direct video or audio files when access and permissions allow.",
+    title: `${appName} — Creator analytics and channel insights`,
+    description: "Analyze public YouTube channel and video performance with transparent creator research insights.",
     applicationName: appName
   };
 }

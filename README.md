@@ -1,88 +1,126 @@
 # MediaDrop
 
-MediaDrop is a responsive link checker and downloader for supported direct video and audio files. It recognizes links from YouTube, Instagram, Facebook, X, and Pinterest, but it does not pretend that those platforms' links are downloadable. Social platform results explain the current limitation and link back to the source.
+MediaDrop is a creator research app for analyzing public YouTube channels and videos. Paste a channel, handle, video, or Shorts URL to retrieve public statistics, compare recent uploads, and see clearly labeled performance signals. The old social-media downloader workflow has been removed.
 
-## What works
+## Current capabilities
 
-| Source | Current status | What this app does |
-| --- | --- | --- |
-| Direct HTTP(S) video/audio file | Supported | Verifies a public host, redirects, file MIME type, and size, then streams the original file to the browser. |
-| YouTube / Shorts | Limited support | Recognizes supported URL patterns and directs users to YouTube. No download or audio extraction is offered. |
-| Instagram Reels/posts | Authorization required | Recognizes public URL shapes. No general public post download integration is available. |
-| Facebook video | Authorization required | Recognizes common public video URL shapes. This deployment has no Facebook access token or permitted file operation. |
-| X video post | Authorization required | Recognizes status links. No X API credentials or general video-file download integration are configured. |
-| Pinterest video Pin | Authorization required | Recognizes Pin links. Pinterest video URL access is restricted and this deployment has no approved token or feature access. |
+- **YouTube channel analysis:** public channel title, avatar, subscriber count when visible, total views, public video count, and latest public uploads.
+- **Recent video metrics:** views, likes, comments, upload date, duration, and engagement rate when YouTube returns those fields.
+- **Evidence-based signals:** median and average recent views, upload pace, top recent upload, and simple title-pattern comparisons.
+- **Earnings estimator:** an editable RPM range applied to recent sample views. After this browser has collected snapshots spanning at least 27 days, the estimate uses observed channel-view growth projected to 28 days. It is not actual revenue.
+- **Theme and responsive layout:** persistent light/dark theme preference and desktop/mobile layouts.
+- **Provider status:** `GET /api/platforms` reports YouTube configuration and planned platforms.
 
-The YouTube API policies prohibit API clients from downloading audiovisual content without prior written approval and prohibit offering video/audio download or separation features. Instagram's oEmbed endpoint is for embedding, and its API access is permission-scoped. Pinterest documents `video_url` as restricted and requires `pins:read` plus explicit feature access. This project therefore does not use scraping, cookies, proxy rotation, or other workarounds. See the [YouTube developer policies](https://developers.google.com/youtube/terms/developer-policies), [Instagram oEmbed documentation](https://developers.facebook.com/docs/instagram-platform/oembed), [Instagram API overview](https://www.postman.com/meta/instagram/documentation/6yqw8pt/instagram-api), [Pinterest API FAQ](https://developers.pinterest.com/docs/faqs/faqs/), and [X API documentation](https://developer.x.com/en/docs/x-api).
+Instagram, Facebook, X, and Pinterest analysis are not implemented yet. Each will require a separate provider and the platform's documented API access. No platform scraping or private-data access is enabled.
 
-Provider statuses returned by `GET /api/platforms` come from the adapter registry. They are not inferred from a platform name supplied by the browser. Adding a social integration requires an approved, documented API permission and code that limits access to content the authorized account may use.
+## Data limitations
+
+The analyzer uses the official YouTube Data API and samples up to 25 recent public uploads. Subscriber counts can be rounded or hidden. Likes and comments can be disabled or unavailable. The three-minute duration split is only a rough format proxy; YouTube's API does not reliably identify Shorts in this implementation.
+
+Public APIs do not provide another creator's private analytics such as watch time, impressions, audience demographics, monetization status, or actual revenue. The earnings estimator uses the RPM values entered by the user and either lifetime views for the sampled uploads or a local 28-day channel-view snapshot. It is not an earnings report or reliable monthly forecast.
+
+Snapshot history is stored in the user's browser local storage for up to 180 days and is not synchronized across devices. It begins when the user analyzes a channel; MediaDrop does not backfill historical metrics.
 
 ## Stack
 
-- Next.js 16 App Router, React 19, and TypeScript
-- Tailwind CSS 4 with accessible component styling
-- Zod request/response validation and Lucide icons
-- Node.js streaming for direct files; no FFmpeg or queue is needed for the supported workflow
-- Vitest, Testing Library, and jsdom for automated checks
-
-No social API credential or paid service is required for the current supported path.
+- Next.js App Router, React, and TypeScript
+- Tailwind CSS with reusable responsive components
+- Zod request and upstream response validation
+- YouTube Data API v3 for channel, playlist, and video metadata
+- Vitest, Testing Library, and jsdom for local automated tests
 
 ## Prerequisites
 
-- Node.js 22 or newer (Next.js 16 requires a modern Node runtime)
+- Node.js 22 or newer
 - npm 10 or newer
-- Docker / Docker Compose only if using the container deployment
+- A Google Cloud project with YouTube Data API v3 enabled and an API key
+- Docker Compose only if using the container deployment
 
-## Install and run
+## Get a YouTube API key
+
+1. Create or select a project in [Google Cloud Console](https://console.cloud.google.com/).
+2. Enable **YouTube Data API v3** for that project.
+3. Create an API key under **APIs & Services → Credentials**.
+4. Restrict the key to YouTube Data API v3. Keep the key server-side; do not use a `NEXT_PUBLIC_` variable for it.
+5. Check the project's YouTube API quota and usage in Google Cloud Console.
+
+The app makes a small number of API calls per analysis (typically three for a channel, four for a video link). API quota and access are controlled by Google Cloud.
+
+## Local development
 
 ```powershell
 Copy-Item .env.example .env.local
-npm install
+```
+
+Add your key to `.env.local`:
+
+```dotenv
+YOUTUBE_API_KEY=your_server_side_key
+```
+
+Then install and run:
+
+```powershell
+npm ci
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). Direct media links should use HTTPS. In development, HTTP links are accepted except that local/private network hosts remain blocked. The app name defaults to `MediaDrop`.
+Open [http://localhost:3000](http://localhost:3000). The page loads without an API key, but analysis returns a clear setup message until `YOUTUBE_API_KEY` is set.
 
-## Environment
-
-Copy `.env.example` to `.env.local` for development. Only variables used by this implementation are listed there:
+## Environment variables
 
 | Variable | Purpose |
 | --- | --- |
-| `NODE_ENV` | Runtime mode. Production requires HTTPS source URLs. |
-| `NEXT_PUBLIC_APP_NAME` | Configurable visible brand name. |
-| `RATE_LIMIT_ANALYZE_PER_MINUTE` | Per-client analyze limit (default 20). |
-| `RATE_LIMIT_DOWNLOAD_PER_MINUTE` | Per-client download limit (default 8). |
-| `NEXT_PUBLIC_CONTACT_EMAIL` | Optional operator contact shown in the footer and policy pages. |
-| `NEXT_PUBLIC_TAKEDOWN_EMAIL` | Optional copyright complaint address. Configure it and establish a review workflow before public launch. |
+| `NODE_ENV` | Runtime mode. |
+| `YOUTUBE_API_KEY` | Server-only key for YouTube Data API v3. |
+| `NEXT_PUBLIC_APP_NAME` | Configurable product name; defaults to MediaDrop. |
+| `RATE_LIMIT_ANALYZE_PER_MINUTE` | Per-client analysis request limit; defaults to 20. |
+| `NEXT_PUBLIC_CONTACT_EMAIL` | Optional operator contact shown on the site. |
+| `NEXT_PUBLIC_TAKEDOWN_EMAIL` | Optional copyright complaint contact. |
 
-There are no social provider API keys in the example because no social provider integration is active. If an approved provider integration is added, keep its credentials server-only, document the exact granted scopes, and update the provider status from the actual configuration.
+Only the variables used by this implementation are listed in `.env.example`.
 
 ## API
 
-- `GET /api/health` — process health only; returns no infrastructure details.
-- `GET /api/platforms` — adapter capability and availability configuration.
-- `POST /api/media/analyze` — JSON body `{ "url": "https://..." }`; returns verified direct file metadata/options or a safe provider limitation.
-- `GET /api/media/download?mediaId=<uuid>&formatId=original` — streams a short-lived verified file capability using the browser's native download behavior.
-- `POST /api/media/download` — JSON body `{ "mediaId": "<uuid>", "formatId": "original" }`; streams the same validated operation for API clients.
+- `GET /api/health` — process health check.
+- `GET /api/platforms` — current analytics integrations and setup status.
+- `POST /api/youtube/analyze` — accepts `{ "url": "https://www.youtube.com/@handle" }` or a supported video URL and returns validated public channel/video analytics.
 
-Successful analysis returns a 10-minute opaque identifier, verified media type, title from the URL path, source-confirmed MIME type and file size (when supplied), and only the original format. It does not return the upstream file URL. The API never fabricates a thumbnail, duration, alternate quality, or file size.
+The analysis endpoint only accepts YouTube hostnames and known channel/video URL patterns. It does not fetch the submitted page; the server calls fixed YouTube API endpoints using an extracted channel handle, channel ID, or video ID. API keys and raw upstream errors are not returned to the browser.
 
-## Security and privacy notes
+## Production deployment
 
-- Social hosts and URL patterns use explicit allowlists. Unsupported domains are rejected unless their URL path has a supported direct-file extension.
-- Direct requests resolve DNS first and pin the request to a validated public IP. Any private/reserved address in a DNS answer rejects the host. Redirects are manual and each destination is revalidated and resolved before connecting.
-- User-info URLs, non-standard ports, private/loopback/link-local addresses, and HTTPS-to-HTTP production redirects are rejected.
-- Direct files must have a matching media MIME type and file signature. Files over 512 MB, non-2xx responses, unsupported formats, and upstream timeouts fail safely.
-- Downloads stream with backpressure; no media file is written to temporary disk. In-memory download capabilities expire after 10 minutes. Request bodies are limited to 4 KB, analysis/download rates are bounded, and four downloads may stream concurrently per process.
-- Responses include no-store, nosniff, same-origin resource policy, frame, referrer, and permissions headers. No CORS access is enabled.
-- No user login, password, session cookie, or browser cookie is accepted. The app does not log full input URLs.
-- The rate-limit and capability stores are process-local. For a multi-instance production deployment, replace them with a shared store and ensure the reverse proxy overwrites `X-Real-IP` or `X-Forwarded-For` rather than passing client-supplied values through.
-- The application avoids raw upstream errors in client responses. Hosting and proxy logs remain under the deployer's control.
+### Vercel
 
-See [Privacy](./app/privacy/page.tsx), [Terms](./app/terms/page.tsx), and [Acceptable Use](./app/acceptable-use/page.tsx). The policy pages are implementation-aligned drafts, not legal advice. Configure contact and takedown details and have the launch policies reviewed before public deployment.
+1. Push the repository to GitHub and import it into Vercel.
+2. Add `YOUTUBE_API_KEY` as a server-side Environment Variable for Production (and Preview if needed).
+3. Optionally add `NEXT_PUBLIC_APP_NAME`, `RATE_LIMIT_ANALYZE_PER_MINUTE`, `NEXT_PUBLIC_CONTACT_EMAIL`, and `NEXT_PUBLIC_TAKEDOWN_EMAIL`.
+4. Deploy or redeploy after saving the environment variables.
+5. Test with a public channel URL and review Google Cloud API quota.
 
-## Development and checks
+The in-memory rate limiter resets across serverless instances, so it is basic abuse control rather than a shared global quota. Add a shared rate-limit store before high-volume public use.
+
+### Docker Compose / Oracle VM
+
+Create a `.env` file next to `docker-compose.yml` with the variables from `.env.example` and your `YOUTUBE_API_KEY`, then run:
+
+```powershell
+docker compose up --build -d
+docker compose logs -f mediadrop
+```
+
+The service binds to `127.0.0.1:3000` on the host. Put an HTTPS reverse proxy such as Caddy or Nginx in front of it for public access; do not expose the app port directly to the internet.
+
+### Production checks
+
+```powershell
+npm run lint
+npm run typecheck
+npm test
+npm run build
+```
+
+## Development commands
 
 ```powershell
 npm run dev
@@ -92,39 +130,25 @@ npm test
 npm run build
 ```
 
-The tests use mock responses and local fixtures only; they do not connect to social accounts or live third-party providers.
+Tests mock YouTube API responses and do not require a live Google API key or social accounts.
 
-## Deployment
+## Privacy and security
 
-### Node server
+- Submitted YouTube URLs are parsed and reduced to a platform identifier; the submitted page itself is not fetched.
+- No account login, passwords, browser cookies, or social session tokens are requested.
+- Analysis responses are not stored by the server. Browser-local snapshots store only channel ID, timestamp, and total view count to compute a 28-day trend.
+- API responses use `Cache-Control: no-store`; raw upstream responses and credentials are not sent to the client.
+- The YouTube API key is read only on the server. Restrict it to the YouTube Data API in Google Cloud.
+- The in-memory rate limiter is per process; multi-instance deployments need a shared limiter for consistent enforcement.
+- Hosting providers may retain their own request logs. Review hosting, reverse-proxy, and monitoring retention before public launch.
 
-```powershell
-npm ci
-npm run build
-$env:NODE_ENV = "production"
-$env:APP_BASE_URL = "https://your-domain.example"
-npm start
-```
-
-Place the Node process behind an HTTPS reverse proxy that sets trusted client IP headers. Do not expose the Node port directly to untrusted networks if your deployment needs proxy-derived client IP rate limits.
-
-### Docker Compose
-
-```powershell
-docker compose up --build
-```
-
-The included image uses the Next.js standalone output and the included compose file adds a basic health check. Configure the public brand/contact/takedown values in the compose environment before exposing the service.
-
-### Deployment limitations
-
-This app uses process memory for rate limiting and 10-minute download capabilities. A single long-running Node container or VM is supported. Serverless functions and multi-replica deployments need a shared capability/rate-limit store (for example Redis); they are not production-ready with the in-memory implementation because requests may land on different instances or processes restart.
+Privacy, terms, and acceptable-use pages are implementation-aligned drafts. Configure real contact details and have them reviewed for the jurisdictions where the service will operate.
 
 ## Troubleshooting
 
-- **A social post is recognized but no download appears:** that is the configured provider limitation. Open the post on its platform and use its own controls when offered.
-- **A direct link fails with a host/network error:** confirm it is a public HTTPS URL, uses port 443, resolves only to public addresses, and does not redirect to a private host.
-- **A direct link fails with a format error:** the source must return an accurate supported `Content-Type`, and the file's initial bytes must match its extension.
-- **A download says it expired:** analyze again. The opaque capability lasts 10 minutes.
-- **Rate limiting is inconsistent across replicas:** use a shared rate-limit store or keep one process; the in-memory limiter is per process.
-- **A complaint/contact link is missing:** set `NEXT_PUBLIC_TAKEDOWN_EMAIL` / `NEXT_PUBLIC_CONTACT_EMAIL`, rebuild, and configure a real review process.
+- **“API key setup required”:** set `YOUTUBE_API_KEY` in `.env.local`, Vercel, or the Compose `.env` file and restart/redeploy.
+- **API key rejected:** confirm YouTube Data API v3 is enabled and the key's API restriction includes it.
+- **Quota exhausted:** inspect Google Cloud quota/usage; the app returns a safe retry-later message.
+- **Channel not found:** try its canonical `/@handle` or `/channel/UC…` URL. Custom `/c/` URLs are not supported in this release.
+- **No earnings or engagement metric:** public YouTube data does not expose actual competitor revenue, and some public metrics may be unavailable.
+- **28-day estimate not available:** this browser needs dated snapshots at least 27 days apart. Local browser data is not shared or backfilled.
